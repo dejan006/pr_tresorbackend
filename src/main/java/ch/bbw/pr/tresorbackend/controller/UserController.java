@@ -7,6 +7,7 @@ import ch.bbw.pr.tresorbackend.model.User;
 import ch.bbw.pr.tresorbackend.service.PasswordEncryptionService;
 import ch.bbw.pr.tresorbackend.service.UserService;
 import ch.bbw.pr.tresorbackend.util.HashUtil;
+import ch.bbw.pr.tresorbackend.util.PasswordStrengthValidator;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -68,6 +69,19 @@ public class UserController {
          );
          JsonObject err = new JsonObject();
          err.add("message", arr);
+         return ResponseEntity
+               .badRequest()
+               .body(new Gson().toJson(err));
+      }
+
+      // Passwortstärke
+      String clearPassword = registerUser.getPassword();
+      if (!PasswordStrengthValidator.isValid(clearPassword)) {
+         JsonObject err = new JsonObject();
+         err.addProperty("message",
+             "Passwort muss mindestens 8 Zeichen lang sein, "
+             + "einen Gross- und Kleinbuchstaben, "
+             + "eine Ziffer und ein Sonderzeichen enthalten.");
          return ResponseEntity
                .badRequest()
                .body(new Gson().toJson(err));
