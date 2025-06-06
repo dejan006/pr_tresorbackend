@@ -128,3 +128,40 @@ Während der Umsetzung stellte sich besonders die Integration der Verschlüsselu
 - **Datenbank**: MySQL (lokal gestartet)
 - **Datenbankmanagement**: MySQL VSCode-Erweiterung
 - **Dokumentation**: Markdown
+
+## 4. Frontend: Passwortstärke-Validierung
+
+### Ziel
+
+Die Benutzer sollen bereits bei der Eingabe ihres Passworts visuelles Feedback zur Stärke des Passworts erhalten, um schwache Passwörter frühzeitig zu vermeiden.
+
+### Umsetzung
+
+- **Bibliothek:** [zxcvbn](https://github.com/dropbox/zxcvbn) von Dropbox wurde installiert (`npm install zxcvbn`).
+- **Ort der Änderung:** `RegisterUser.js` im Frontend (`src/pages/user/`)
+- **Verhalten:**
+  - Bei jeder Eingabe im Passwortfeld wird mit zxcvbn ein Score zwischen 0 (schwach) und 4 (sehr stark) berechnet.
+  - Der Score wird als Text ("Schwach", "Mittel", "Stark") angezeigt.
+  - Zusätzlich zeigt das System Hinweise zur Verbesserung des Passworts.
+  - Der Registrieren-Button bleibt deaktiviert, solange die Passwortstärke unter dem Schwellenwert (Score < 2) liegt.
+
+**Codeauszug:**
+
+```jsx
+import zxcvbn from 'zxcvbn';
+
+const handlePasswordChange = (e) => {
+  const pw = e.target.value;
+  setCredentials(prev => ({ ...prev, password: pw }));
+  const result = zxcvbn(pw);
+  setPasswordScore(result.score);
+  setPasswordFeedback(result.feedback.warning || result.feedback.suggestions.join(' '));
+};
+
+{passwordScore !== null && (
+  <div>
+    <p>Stärke: <strong>{passwordScore <= 1 ? 'Schwach' : passwordScore === 2 ? 'Mittel' : 'Stark'}</strong></p>
+    <p>{passwordFeedback}</p>
+  </div>
+)}
+```

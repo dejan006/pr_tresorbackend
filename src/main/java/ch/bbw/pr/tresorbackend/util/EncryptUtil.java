@@ -47,8 +47,6 @@ public class EncryptUtil {
 
         System.arraycopy(allBytes, 0, iv, 0, ivLen);
         System.arraycopy(allBytes, ivLen, cipherBytes, 0, cipherBytes.length);
-
-        // Vorbereitung Cipher
         Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
 
