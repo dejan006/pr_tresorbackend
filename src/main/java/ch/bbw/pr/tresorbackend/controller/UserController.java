@@ -24,6 +24,8 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
+import ch.bbw.pr.tresorbackend.service.CaptchaService;
+
 /**
  * UserController
  * @author Peter Rutschmann
@@ -36,6 +38,7 @@ public class UserController {
    private UserService userService;
    private PasswordEncryptionService passwordService;
    private final ConfigProperties configProperties;
+   private final CaptchaService captchaService;
 
    // Pepper aus application.properties file
    @Value("${app.security.pepper}")
@@ -44,14 +47,16 @@ public class UserController {
 
    @Autowired
    public UserController(ConfigProperties configProperties, UserService userService,
-                         PasswordEncryptionService passwordService) {
+                      PasswordEncryptionService passwordService, CaptchaService captchaService) {
       this.configProperties = configProperties;
-      System.out.println("UserController.UserController: cross origin: " + configProperties.getOrigin());
-      // Logging in the constructor
-      logger.info("UserController initialized: " + configProperties.getOrigin());
-      logger.debug("UserController.UserController: Cross Origin Config: {}", configProperties.getOrigin());
       this.userService = userService;
       this.passwordService = passwordService;
+      this.captchaService = captchaService;
+
+   System.out.println("UserController.UserController: cross origin: " + configProperties.getOrigin());
+   logger.info("UserController initialized: " + configProperties.getOrigin());
+   logger.debug("UserController.UserController: Cross Origin Config: {}", configProperties.getOrigin());
+
    }
 
    // build create User REST API
@@ -86,6 +91,14 @@ public class UserController {
                .badRequest()
                .body(new Gson().toJson(err));
       }
+
+      // Captcha
+      String captchaToken = registerUser.getCaptcha();
+         if (captchaToken == null || !captchaService.verifyCaptcha(captchaToken)) {
+            JsonObject err = new JsonObject();
+            err.addProperty("message", "Captcha Verifikation fehlgeschlagen. Bitte versuche es erneut.");
+            return ResponseEntity.badRequest().body(new Gson().toJson(err));
+         }
 
       // Salt generieren für encryption
       String encryptionSalt = HashUtil.generateSalt();

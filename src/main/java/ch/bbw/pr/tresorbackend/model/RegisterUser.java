@@ -9,7 +9,7 @@ import lombok.*;
  * RegisterUser
  * @author Peter Rutschmann
  */
-@Value
+@Data
 public class RegisterUser {
 
    @NotEmpty(message="Firstname is required.")
@@ -30,4 +30,13 @@ public class RegisterUser {
    private String passwordConfirmation;
 
    private String recaptchaToken;
+
+   private String captcha;
+
+   public String getCaptcha() {
+      return captcha;
+   }
+   public void setCaptcha(String captcha) {
+      this.captcha = captcha;
+   }
 }

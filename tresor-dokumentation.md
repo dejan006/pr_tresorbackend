@@ -79,7 +79,95 @@ ALTER TABLE secret MODIFY COLUMN content LONGTEXT NOT NULL;
 
 ---
 
-## 3. Frontend: JSON-Darstellungsfehler behoben
+## 3. Captcha-Schutz bei der Registrierung
+
+### Ziel
+
+Automatisierte Bot-Registrierungen sollen verhindert werden, indem eine reCAPTCHA-Validierung integriert wird.
+
+### Umsetzung
+
+- **Verwendeter Dienst**: Google reCAPTCHA v2
+- **Frontend**: React-Komponente `react-google-recaptcha` verwendet
+- **Backend**: Token-Verifikation mit dem Google-API über den `CaptchaService`
+
+#### Frontend: `RegisterUser.js`
+- Die Komponente `<ReCAPTCHA />` wurde eingebunden
+- Das generierte Token wird im `credentials`-State mitgespeichert
+- Das Token wird im JSON beim POST mitgeschickt
+
+```jsx
+<ReCAPTCHA
+  ref={recaptchaRef}
+  sitekey="DEIN_SITE_KEY"
+  onChange={(token) => {
+    setCaptchaToken(token);
+    setCredentials(prev => ({ ...prev, captcha: token }));
+  }}
+/>
+```
+
+#### Backend:
+- `CaptchaService` überprüft das Token serverseitig über Googles Verifizierungs-Endpoint
+- In `UserController` wird `registerUser.getCaptcha()` überprüft:
+
+```java
+String captchaToken = registerUser.getCaptcha();
+if (captchaToken == null || !captchaService.verifyCaptcha(captchaToken)) {
+    JsonObject err = new JsonObject();
+    err.addProperty("message", "Captcha Verifikation fehlgeschlagen. Bitte versuche es erneut.");
+    return ResponseEntity.badRequest().body(new Gson().toJson(err));
+}
+```
+
+- Die Klasse `RegisterUser.java` wurde um das Feld `private String captcha;` erweitert
+
+#### Konfiguration:
+```properties
+recaptcha.secret=GEHEIMER_KEY
+recaptcha.url=https://www.google.com/recaptcha/api/siteverify
+```
+
+---
+
+## 4. Frontend: Passwortstärke-Validierung
+
+### Ziel
+
+Die Benutzer sollen bereits bei der Eingabe ihres Passworts visuelles Feedback zur Stärke des Passworts erhalten, um schwache Passwörter frühzeitig zu vermeiden.
+
+### Umsetzung
+
+- **Bibliothek:** [zxcvbn](https://github.com/dropbox/zxcvbn) von Dropbox wurde installiert (`npm install zxcvbn`).
+- **Ort der Änderung:** `RegisterUser.js` im Frontend (`src/pages/user/`)
+- **Verhalten:**
+  - Bei jeder Eingabe im Passwortfeld wird mit zxcvbn ein Score zwischen 0 (schwach) und 4 (sehr stark) berechnet.
+  - Der Score wird als Text ("Schwach", "Mittel", "Stark") angezeigt.
+  - Zusätzlich zeigt das System Hinweise zur Verbesserung des Passworts.
+  - Der Registrieren-Button bleibt deaktiviert, solange die Passwortstärke unter dem Schwellenwert (Score < 2) liegt.
+
+```jsx
+import zxcvbn from 'zxcvbn';
+
+const handlePasswordChange = (e) => {
+  const pw = e.target.value;
+  setCredentials(prev => ({ ...prev, password: pw }));
+  const result = zxcvbn(pw);
+  setPasswordScore(result.score);
+  setPasswordFeedback(result.feedback.warning || result.feedback.suggestions.join(' '));
+};
+
+{passwordScore !== null && (
+  <div>
+    <p>Stärke: <strong>{passwordScore <= 1 ? 'Schwach' : passwordScore === 2 ? 'Mittel' : 'Stark'}</strong></p>
+    <p>{passwordFeedback}</p>
+  </div>
+)}
+```
+
+---
+
+## 5. Frontend: JSON-Darstellungsfehler behoben
 
 ### Problemstellung
 
@@ -116,6 +204,8 @@ setSecrets(parsed);
 | Secrets-Verschlüsselung  | `EncryptUtil.java`, `SecretController.java` | AES-Verschlüsselung mit individuellem Key                 |
 |                          | `NewSecret.java`                        | Modell erweitert um notwendige Felder                      |
 |                          | Datenbank                               | Salt-Spalte & Anpassung des Datentyps `content`            |
+| Captcha                  | `RegisterUser.js`, `UserController.java`, `CaptchaService.java` | Schutz gegen Bots durch reCAPTCHA                         |
+|                          | `application.properties`                | Secret Key & API-URL für reCAPTCHA                         |
 | Frontend-Fehlerbehebung  | `Secrets.js`                            | JSON korrekt geparst und dargestellt                       |
 
 ---
@@ -128,40 +218,3 @@ Während der Umsetzung stellte sich besonders die Integration der Verschlüsselu
 - **Datenbank**: MySQL (lokal gestartet)
 - **Datenbankmanagement**: MySQL VSCode-Erweiterung
 - **Dokumentation**: Markdown
-
-## 4. Frontend: Passwortstärke-Validierung
-
-### Ziel
-
-Die Benutzer sollen bereits bei der Eingabe ihres Passworts visuelles Feedback zur Stärke des Passworts erhalten, um schwache Passwörter frühzeitig zu vermeiden.
-
-### Umsetzung
-
-- **Bibliothek:** [zxcvbn](https://github.com/dropbox/zxcvbn) von Dropbox wurde installiert (`npm install zxcvbn`).
-- **Ort der Änderung:** `RegisterUser.js` im Frontend (`src/pages/user/`)
-- **Verhalten:**
-  - Bei jeder Eingabe im Passwortfeld wird mit zxcvbn ein Score zwischen 0 (schwach) und 4 (sehr stark) berechnet.
-  - Der Score wird als Text ("Schwach", "Mittel", "Stark") angezeigt.
-  - Zusätzlich zeigt das System Hinweise zur Verbesserung des Passworts.
-  - Der Registrieren-Button bleibt deaktiviert, solange die Passwortstärke unter dem Schwellenwert (Score < 2) liegt.
-
-**Codeauszug:**
-
-```jsx
-import zxcvbn from 'zxcvbn';
-
-const handlePasswordChange = (e) => {
-  const pw = e.target.value;
-  setCredentials(prev => ({ ...prev, password: pw }));
-  const result = zxcvbn(pw);
-  setPasswordScore(result.score);
-  setPasswordFeedback(result.feedback.warning || result.feedback.suggestions.join(' '));
-};
-
-{passwordScore !== null && (
-  <div>
-    <p>Stärke: <strong>{passwordScore <= 1 ? 'Schwach' : passwordScore === 2 ? 'Mittel' : 'Stark'}</strong></p>
-    <p>{passwordFeedback}</p>
-  </div>
-)}
-```

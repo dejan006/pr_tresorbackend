@@ -28,7 +28,6 @@ public class HashUtil {
         PBEKeySpec spec = new PBEKeySpec(chars, salt, ITERATIONS, KEY_LENGTH);
         SecretKeyFactory skf = SecretKeyFactory.getInstance(ALGO);
         byte[] hash = skf.generateSecret(spec).getEncoded();
-
         return Base64.getEncoder().encodeToString(hash);
     }
 
