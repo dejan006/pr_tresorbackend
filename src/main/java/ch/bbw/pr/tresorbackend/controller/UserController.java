@@ -91,7 +91,7 @@ public class UserController {
                .badRequest()
                .body(new Gson().toJson(err));
       }
-
+      System.out.println("getCAPTCHA................................." + registerUser.getCaptcha());
       // Captcha
       String captchaToken = registerUser.getCaptcha();
          if (captchaToken == null || !captchaService.verifyCaptcha(captchaToken)) {
@@ -99,6 +99,7 @@ public class UserController {
             err.addProperty("message", "Captcha Verifikation fehlgeschlagen. Bitte versuche es erneut.");
             return ResponseEntity.badRequest().body(new Gson().toJson(err));
          }
+      System.out.println("Verifikation vom token"+ captchaService.verifyCaptcha(captchaToken));
 
       // Salt generieren für encryption
       String encryptionSalt = HashUtil.generateSalt();
