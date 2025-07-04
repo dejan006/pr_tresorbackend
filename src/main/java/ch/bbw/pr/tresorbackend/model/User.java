@@ -38,4 +38,13 @@ public class User {
 
    @Column(nullable = false, name="password_salt")
    private String passwordSalt;
+
+   @Column(nullable = false)
+   private String role; // z.B. "USER" oder "ADMIN"
+
+   @Column(name = "provider")
+   private String provider; // z.B. "google"
+
+   @Column(name = "provider_id")
+   private String providerId; // z.B. Google-Sub-ID
 }

@@ -129,7 +129,10 @@ public class UserController {
             registerUser.getEmail(),
             passwordHash,        
             encryptionSalt,      
-            passwordSalt         
+            passwordSalt,        
+            "USER", // Standardrolle
+            null,   // provider
+            null    // providerId
       );
       userService.createUser(user);
 
